@@ -28,6 +28,7 @@
             <label class="space-y-2 text-sm">
               <span class="font-medium text-slate-700">性别</span>
               <select v-model="gender" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                <option value="" disabled>请选择性别</option>
                 <option v-for="option in genderOptions" :key="option.value" :value="option.value">
                   {{ option.label }}
                 </option>
@@ -36,25 +37,28 @@
             <label class="space-y-2 text-sm">
               <span class="font-medium text-slate-700">学校</span>
               <select v-model="schoolLevel" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                <option value="" disabled>请选择学校</option>
                 <option v-for="option in schoolLevels" :key="option" :value="option">
                   {{ option }}
                 </option>
               </select>
             </label>
             <label class="space-y-2 text-sm">
-              <span class="font-medium text-slate-700">学习年限</span>
+              <span class="font-medium text-slate-700">学习时长</span>
               <input
                 v-model.number="learningAge"
                 type="number"
                 min="0"
                 max="50"
                 step="1"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                placeholder="例如 1（必选）"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400"
               />
             </label>
             <label class="space-y-2 text-sm sm:col-span-2">
               <span class="font-medium text-slate-700">年级</span>
               <select v-model="grade" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                <option value="" disabled>请选择年级</option>
                 <option v-for="option in availableGrades" :key="option" :value="option">
                   {{ option }}
                 </option>
@@ -80,21 +84,8 @@
           </div>
 
           <div class="grid gap-4 sm:grid-cols-2">
-            <div class="rounded-2xl border border-dashed border-slate-200 bg-white p-4 shadow-sm">
-              <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">MP3 Upload</p>
-              <label class="mt-3 block text-sm text-slate-700">
-                <span class="sr-only">上传音频</span>
-                <input
-                  type="file"
-                  accept=".mp3,audio/mpeg"
-                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                  @change="handleFileSelect"
-                />
-              </label>
-              <p class="mt-2 text-xs text-slate-500">仅支持 mp3 文件 可拖拽或点击选择</p>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
-              可直接录音 或上传 mp3 后提交评测
+            <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
+              当前仅支持直接录音提交 暂不开放文件上传
             </div>
           </div>
         </div>
@@ -136,11 +127,21 @@
               <audio v-if="audioUrl" :src="audioUrl" controls class="w-full"></audio>
               <p v-else class="text-sm text-slate-500">暂无录音</p>
             </div>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                class="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="!audioBlob"
+                @click="saveRecording"
+              >
+                保存录音
+              </button>
+            </div>
           </div>
 
           <button
             class="w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            :disabled="!audioBlob || !refText || sentenceLoading || !name || gender === '' || learningAge < 0 || isSubmitting"
+            :disabled="!audioBlob || !refText || sentenceLoading || !name || !gender || !schoolLevel || !grade || learningAge === '' || Number(learningAge) < 0 || isSubmitting"
             @click="submitAnalyze"
           >
             {{ isSubmitting ? '提交中...' : '提交评测' }}
@@ -156,30 +157,135 @@
       </div>
     </section>
 
-    <section v-if="apiResponse" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
-      <h2 class="text-base font-semibold text-slate-800">接口响应</h2>
-      <pre class="mt-3 overflow-auto rounded-2xl bg-slate-900 p-4 text-xs text-emerald-200">
-{{ apiResponse }}
-      </pre>
-    </section>
-
-      <section v-if="resultScore" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
-      <h2 class="text-base font-semibold text-slate-800">打分情况</h2>
-      <div class="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-        <p class="text-xs uppercase tracking-[0.2em] text-emerald-600">Summary</p>
-        <p class="mt-2 text-lg font-semibold text-emerald-900">
-          {{ scoreSummary || '已返回评分结果' }}
-        </p>
+    <section v-if="resultScore" ref="scoreSection" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-base font-semibold text-slate-800">打分情况</h2>
+        <button
+          type="button"
+          class="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+          @click="startNewTest"
+        >
+          新的测试
+        </button>
       </div>
-      <pre class="mt-3 overflow-auto rounded-2xl bg-slate-900 p-4 text-xs text-emerald-200">
-{{ JSON.stringify(resultScore, null, 2) }}
-      </pre>
+
+      <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm">
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Overall</p>
+          <p class="mt-2 text-2xl font-semibold" :class="scoreTextClass(resultScore.overall)">
+            {{ formatScore(resultScore.overall) }}
+          </p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm">
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Pronunciation</p>
+          <p class="mt-2 text-2xl font-semibold" :class="scoreTextClass(resultScore.pronunciation)">
+            {{ formatScore(resultScore.pronunciation) }}
+          </p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm">
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Fluency</p>
+          <p class="mt-2 text-2xl font-semibold" :class="scoreTextClass(resultScore.fluency)">
+            {{ formatScore(resultScore.fluency) }}
+          </p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm">
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Rhythm</p>
+          <p class="mt-2 text-2xl font-semibold" :class="scoreTextClass(resultScore.rhythm)">
+            {{ formatScore(resultScore.rhythm) }}
+          </p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm">
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Tone</p>
+          <p class="mt-2 text-2xl font-semibold" :class="scoreTextClass(resultScore.tone)">
+            {{ formatScore(resultScore.tone) }}
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+        <p class="text-xs uppercase tracking-[0.2em] text-slate-500">分词评分</p>
+        <div v-if="resultWords.length" class="mt-4 space-y-4">
+          <div class="rounded-2xl border border-slate-200 bg-[radial-gradient(circle_at_top,_#f8fafc,_#eef2ff_60%,_#f1f5f9)] p-4">
+            <div class="flex flex-wrap items-center gap-2 text-base text-slate-900">
+              <span
+                v-for="(word, idx) in resultWords"
+                :key="`${word.word}-${idx}`"
+                class="group inline-flex items-center"
+                @mouseenter="activeWordIndex = idx"
+                @mouseleave="activeWordIndex = null"
+              >
+                <span
+                  :class="[
+                    'cursor-pointer select-none px-1 text-sm transition',
+                    scoreUnderlineClass(word.scores?.overall),
+                  ]"
+                >
+                  {{ word.word }}
+                </span>
+              </span>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+              <span class="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700">高分</span>
+              <span class="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">中等</span>
+              <span class="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-700">偏低</span>
+              <span>鼠标移到分词上查看对应评分</span>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm">
+            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">当前分词详情</p>
+            <div class="mt-3 grid min-h-[10rem] gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <p class="text-xs text-slate-500">文本</p>
+                <p class="mt-1 text-base font-semibold text-slate-900">{{ activeWord?.word || '—' }}</p>
+              </div>
+              <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <p class="text-xs text-slate-500">Overall</p>
+                <p class="mt-1 text-base font-semibold" :class="scoreTextClass(activeWord?.scores?.overall)">
+                  {{ formatScore(activeWord?.scores?.overall) }}
+                </p>
+              </div>
+              <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <p class="text-xs text-slate-500">Pronunciation</p>
+                <p class="mt-1 text-base font-semibold" :class="scoreTextClass(activeWord?.scores?.pronunciation)">
+                  {{ formatScore(activeWord?.scores?.pronunciation) }}
+                </p>
+              </div>
+              <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <p class="text-xs text-slate-500">Prominence</p>
+                <p class="mt-1 text-base font-semibold" :class="scoreTextClass(activeWord?.scores?.prominence)">
+                  {{ formatScore(activeWord?.scores?.prominence) }}
+                </p>
+              </div>
+              <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <p class="text-xs text-slate-500">Tone Score</p>
+                <p class="mt-1 text-base font-semibold" :class="scoreTextClass(activeWord?.tone_stats?.tone_score)">
+                  {{ formatScore(activeWord?.tone_stats?.tone_score) }}
+                </p>
+              </div>
+              <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <p class="text-xs text-slate-500">Speed</p>
+                <p class="mt-1 text-base font-semibold" :class="scoreTextClass(resultScore.speed)">
+                  {{ formatScore(resultScore.speed) }}
+                </p>
+              </div>
+              <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 sm:col-span-2 lg:col-span-3">
+                <p class="text-xs text-slate-500">音素</p>
+                <p class="mt-1 text-sm font-semibold text-slate-900">{{ formatPhonemes(activeWord?.phonemes) }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+          未返回分词评分数据
+        </div>
+      </div>
     </section>
   </section>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 const schoolLevels = ['中学', '大学'];
 const grades = ['一年生', '二年生', '三年生', '四年生'];
@@ -187,12 +293,12 @@ const genderOptions = [
   { label: '男', value: 'male' },
   { label: '女', value: 'female' },
 ];
-const schoolLevel = ref(schoolLevels[0]);
-const grade = ref(grades[0]);
+const schoolLevel = ref('');
+const grade = ref('');
 const refText = ref('');
 const name = ref('');
-const gender = ref(genderOptions[0].value);
-const learningAge = ref(0);
+const gender = ref('');
+const learningAge = ref('');
 
 const isRecording = ref(false);
 const isSubmitting = ref(false);
@@ -201,6 +307,8 @@ const error = ref('');
 const apiResponse = ref('');
 const resultScore = ref(null);
 const sentenceLoading = ref(false);
+const activeWordIndex = ref(null);
+const scoreSection = ref(null);
 
 const audioBlob = ref(null);
 const audioUrl = ref('');
@@ -211,16 +319,20 @@ let mediaStream = null;
 let recordedChunks = [];
 
 const canRecord = computed(() => Boolean(navigator.mediaDevices?.getUserMedia));
-const scoreSummary = computed(() => {
-  if (!resultScore.value) return '';
-  if (typeof resultScore.value === 'string') return resultScore.value;
-  if (typeof resultScore.value === 'number') return String(resultScore.value);
-  if (typeof resultScore.value === 'object') {
-    return resultScore.value.result ? String(resultScore.value.result) : '';
-  }
-  return '';
+const resultWords = computed(() => {
+  if (!resultScore.value) return [];
+  if (Array.isArray(resultScore.value)) return resultScore.value;
+  if (Array.isArray(resultScore.value.words)) return resultScore.value.words;
+  if (Array.isArray(resultScore.value.result_details)) return resultScore.value.result_details;
+  return [];
+});
+
+const activeWord = computed(() => {
+  if (activeWordIndex.value === null) return null;
+  return resultWords.value[activeWordIndex.value] || null;
 });
 const availableGrades = computed(() => {
+  if (!schoolLevel.value) return [];
   if (schoolLevel.value === '中学') {
     return grades.filter((item) => item !== '四年生');
   }
@@ -231,7 +343,7 @@ watch(
   () => schoolLevel.value,
   () => {
     if (!availableGrades.value.includes(grade.value)) {
-      grade.value = availableGrades.value[0];
+      grade.value = '';
     }
   }
 );
@@ -302,20 +414,14 @@ const stopRecording = () => {
   isRecording.value = false;
 };
 
-const handleFileSelect = (event) => {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  const isMp3 = file.type === 'audio/mpeg' || file.name.toLowerCase().endsWith('.mp3');
-  if (!isMp3) {
-    error.value = '仅支持 mp3 文件';
-    event.target.value = '';
-    return;
-  }
-  resetRecording();
-  audioBlob.value = file;
-  audioUrl.value = URL.createObjectURL(file);
-  preferredMimeType.value = file.type || 'audio/mpeg';
-  status.value = '已选 mp3 文件，可以回放或提交';
+const saveRecording = () => {
+  if (!audioBlob.value || !audioUrl.value) return;
+  const link = document.createElement('a');
+  link.href = audioUrl.value;
+  link.download = `recording_${Date.now()}.mp3`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 
 const extensionFromMime = (mimeType) => {
@@ -342,8 +448,20 @@ const submitAnalyze = async () => {
     error.value = '请选择性别';
     return;
   }
-  if (Number.isNaN(learningAge.value) || learningAge.value < 0) {
-    error.value = '请输入有效的学习年限';
+  if (!schoolLevel.value) {
+    error.value = '请选择学校';
+    return;
+  }
+  if (!grade.value) {
+    error.value = '请选择年级';
+    return;
+  }
+  if (learningAge.value === '') {
+    error.value = '请填写学习时长';
+    return;
+  }
+  if (Number.isNaN(learningAge.value) || Number(learningAge.value) < 0) {
+    error.value = '请输入有效的学习时长';
     return;
   }
   if (!refText.value) {
@@ -356,7 +474,7 @@ const submitAnalyze = async () => {
   const extension = extensionFromMime(mimeType);
   formData.append('audio', audioBlob.value, `recording.${extension}`);
   formData.append('ref_text', refText.value);
-  formData.append('core', 'word');
+  formData.append('core', 'sent');
   formData.append('name', name.value);
   formData.append('gender', gender.value);
   formData.append('learning_age', String(learningAge.value));
@@ -378,7 +496,11 @@ const submitAnalyze = async () => {
     }
 
     resultScore.value = data?.result_score ?? null;
-    apiResponse.value = JSON.stringify(data, null, 2);
+    activeWordIndex.value = null;
+    await nextTick();
+    if (scoreSection.value) {
+      scoreSection.value.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
     status.value = '提交成功';
   } catch (err) {
     error.value = err.message || '提交失败，请稍后再试';
@@ -412,5 +534,54 @@ const fetchRandomSentence = async () => {
 onMounted(() => {
   fetchRandomSentence();
 });
+
+const scoreUnderlineClass = (value) => {
+  if (value === null || value === undefined) return 'border-b border-slate-200 text-slate-700';
+  const score = Number(value);
+  if (Number.isNaN(score)) return 'border-b border-slate-200 text-slate-700';
+  if (score >= 85) return 'border-b-2 border-emerald-400 text-emerald-700';
+  if (score >= 60) return 'border-b-2 border-amber-400 text-amber-700';
+  return 'border-b-2 border-rose-400 text-rose-700';
+};
+
+const scoreTextClass = (value) => {
+  if (value === null || value === undefined) return 'text-slate-400';
+  const score = Number(value);
+  if (Number.isNaN(score)) return 'text-slate-400';
+  if (score >= 85) return 'text-emerald-700';
+  if (score >= 60) return 'text-amber-700';
+  return 'text-rose-700';
+};
+
+const formatScore = (value) => {
+  if (value === null || value === undefined || value === '') return '—';
+  if (typeof value === 'number') return value.toFixed(1);
+  return String(value);
+};
+
+const formatPhonemes = (phonemes) => {
+  if (!Array.isArray(phonemes) || phonemes.length === 0) return '—';
+  return phonemes
+    .map((item) => {
+      const name = item.phoneme ?? '';
+      const score = formatScore(item.pronunciation);
+      return `${name}:${score}`;
+    })
+    .join('  ');
+};
+
+const startNewTest = () => {
+  resultScore.value = null;
+  activeWordIndex.value = null;
+  error.value = '';
+  status.value = '';
+  resetRecording();
+  name.value = '';
+  gender.value = '';
+  schoolLevel.value = '';
+  grade.value = '';
+  learningAge.value = '';
+  fetchRandomSentence();
+};
 
 </script>
