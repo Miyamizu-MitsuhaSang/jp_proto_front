@@ -339,7 +339,7 @@ const audioRefs = new Map();
 const pingAdminSession = async () => {
   adminLoading.value = true;
   try {
-    const response = await fetch('/admin/ping', {
+    const response = await fetch('/api/admin/ping', {
       method: 'POST',
       credentials: 'include',
     });
@@ -358,7 +358,7 @@ const pingAdminSession = async () => {
 const fetchAdminRecords = async (targetPage = page.value) => {
   recordsLoading.value = true;
   try {
-    const response = await fetch(`/admin/all-record?page=${targetPage}&page_size=${pageSize.value}`, {
+    const response = await fetch(`/api/admin/all-record?page=${targetPage}&page_size=${pageSize.value}`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -393,8 +393,8 @@ const formatDate = (value) => {
   return date.toLocaleString();
 };
 
-const audioUrl = (recordId) => `/admin/download/record?record_id=${encodeURIComponent(recordId)}`;
-const downloadUrl = (recordId) => `/admin/download/record?record_id=${encodeURIComponent(recordId)}&download=1`;
+const audioUrl = (recordId) => `/api/admin/download/record?record_id=${encodeURIComponent(recordId)}`;
+const downloadUrl = (recordId) => `/api/admin/download/record?record_id=${encodeURIComponent(recordId)}&download=1`;
 
 const toggleAudio = (recordId) => {
   const nextId = activeAudioId.value === recordId ? '' : recordId;
@@ -443,7 +443,7 @@ const fetchDetailScore = async (record) => {
     if (!record?.test_id) {
       throw new Error('缺少 test_id，无法获取评分详情。');
     }
-    const response = await fetch(`/admin/detail/${record.test_id}`, {
+    const response = await fetch(`/api/admin/detail/${record.test_id}`, {
       method: 'GET',
       credentials: 'include',
     });

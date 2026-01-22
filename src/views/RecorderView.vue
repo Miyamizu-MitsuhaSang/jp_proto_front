@@ -8,7 +8,7 @@
         录音、回放并提交评测
       </h1>
       <p class="max-w-3xl text-sm text-slate-600 sm:text-base">
-        学校与年级为下拉选择，录音将尽量使用 mp3 格式（浏览器不支持时会退化为可用格式）。
+        学校与年级为下拉选择，录音将尽量使用 mp3 格式（浏览器不支持时会退化为可用格式）
       </p>
     </header>
 
@@ -80,8 +80,21 @@
           </div>
 
           <div class="grid gap-4 sm:grid-cols-2">
-            <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
-              当前仅支持直接录音提交，暂不支持上传现有文件。
+            <div class="rounded-2xl border border-dashed border-slate-200 bg-white p-4 shadow-sm">
+              <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">MP3 Upload</p>
+              <label class="mt-3 block text-sm text-slate-700">
+                <span class="sr-only">上传音频</span>
+                <input
+                  type="file"
+                  accept=".mp3,audio/mpeg"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  @change="handleFileSelect"
+                />
+              </label>
+              <p class="mt-2 text-xs text-slate-500">仅支持 mp3 文件 可拖拽或点击选择</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
+              可直接录音 或上传 mp3 后提交评测
             </div>
           </div>
         </div>
@@ -112,16 +125,16 @@
                 重录
               </button>
             </div>
-            <p class="mt-4 text-xs text-slate-300">
-              录音会尽量使用 mp3，若浏览器不支持则自动改用可用格式。
-            </p>
-          </div>
+              <p class="mt-4 text-xs text-slate-300">
+                录音会尽量使用 mp3 若浏览器不支持则自动改用可用格式
+              </p>
+            </div>
 
           <div class="rounded-2xl border border-slate-200 bg-white p-5">
             <p class="text-xs uppercase tracking-[0.25em] text-slate-500">回放预览</p>
             <div class="mt-3">
               <audio v-if="audioUrl" :src="audioUrl" controls class="w-full"></audio>
-              <p v-else class="text-sm text-slate-500">暂无录音。</p>
+              <p v-else class="text-sm text-slate-500">暂无录音</p>
             </div>
           </div>
 
@@ -150,7 +163,7 @@
       </pre>
     </section>
 
-    <section v-if="resultScore" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
+      <section v-if="resultScore" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
       <h2 class="text-base font-semibold text-slate-800">打分情况</h2>
       <div class="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
         <p class="text-xs uppercase tracking-[0.2em] text-emerald-600">Summary</p>
@@ -271,7 +284,7 @@ const startRecording = async () => {
       audioBlob.value = blob;
       audioUrl.value = URL.createObjectURL(blob);
       cleanupStream();
-      status.value = '录音完成，可以回放或提交。';
+      status.value = '录音完成，可以回放或提交';
     };
 
     mediaRecorder.start();
@@ -279,7 +292,7 @@ const startRecording = async () => {
     status.value = '录音中...';
   } catch (err) {
     cleanupStream();
-    error.value = '无法访问麦克风，请检查浏览器权限。';
+    error.value = '无法访问麦克风，请检查浏览器权限';
   }
 };
 
@@ -287,6 +300,22 @@ const stopRecording = () => {
   if (!mediaRecorder) return;
   mediaRecorder.stop();
   isRecording.value = false;
+};
+
+const handleFileSelect = (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const isMp3 = file.type === 'audio/mpeg' || file.name.toLowerCase().endsWith('.mp3');
+  if (!isMp3) {
+    error.value = '仅支持 mp3 文件';
+    event.target.value = '';
+    return;
+  }
+  resetRecording();
+  audioBlob.value = file;
+  audioUrl.value = URL.createObjectURL(file);
+  preferredMimeType.value = file.type || 'audio/mpeg';
+  status.value = '已选 mp3 文件，可以回放或提交';
 };
 
 const extensionFromMime = (mimeType) => {
@@ -302,23 +331,23 @@ const submitAnalyze = async () => {
   apiResponse.value = '';
 
   if (!audioBlob.value) {
-    error.value = '请先录音。';
+    error.value = '请先录音';
     return;
   }
   if (!name.value) {
-    error.value = '请输入姓名。';
+    error.value = '请输入姓名';
     return;
   }
   if (!gender.value) {
-    error.value = '请选择性别。';
+    error.value = '请选择性别';
     return;
   }
   if (Number.isNaN(learningAge.value) || learningAge.value < 0) {
-    error.value = '请输入有效的学习年限。';
+    error.value = '请输入有效的学习年限';
     return;
   }
   if (!refText.value) {
-    error.value = '参考文本获取中，请稍候。';
+    error.value = '参考文本获取中，请稍候';
     return;
   }
 
@@ -338,7 +367,7 @@ const submitAnalyze = async () => {
   status.value = '正在提交到后端...';
 
   try {
-    const response = await fetch('/test/analyze', {
+    const response = await fetch('/api/test/analyze', {
       method: 'POST',
       body: formData,
     });
@@ -350,9 +379,9 @@ const submitAnalyze = async () => {
 
     resultScore.value = data?.result_score ?? null;
     apiResponse.value = JSON.stringify(data, null, 2);
-    status.value = '提交成功。';
+    status.value = '提交成功';
   } catch (err) {
-    error.value = err.message || '提交失败，请稍后再试。';
+    error.value = err.message || '提交失败，请稍后再试';
   } finally {
     isSubmitting.value = false;
   }
@@ -367,14 +396,14 @@ const fetchRandomSentence = async () => {
   error.value = '';
   sentenceLoading.value = true;
   try {
-    const response = await fetch('/test/random_sentence');
+    const response = await fetch('/api/test/random_sentence');
     const data = await response.json();
     if (!response.ok) {
       throw new Error(data?.detail || '获取参考文本失败');
     }
     refText.value = data?.text || '';
   } catch (err) {
-    error.value = err.message || '获取参考文本失败，请稍后再试。';
+    error.value = err.message || '获取参考文本失败，请稍后再试';
   } finally {
     sentenceLoading.value = false;
   }

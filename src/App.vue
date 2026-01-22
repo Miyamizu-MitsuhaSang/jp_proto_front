@@ -88,7 +88,7 @@ const openAdminModal = async () => {
   adminError.value = '';
   adminLoading.value = true;
   try {
-    const response = await fetch('/admin/ping', {
+    const response = await fetch('/api/admin/ping', {
       method: 'POST',
       credentials: 'include',
     });
@@ -118,7 +118,7 @@ const submitAdminAccess = async () => {
   adminError.value = '';
   adminLoading.value = true;
   try {
-    const response = await fetch('/admin/login', {
+    const response = await fetch('/api/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
