@@ -19,7 +19,7 @@
             :disabled="adminLoading"
             @click="openAdminModal"
           >
-            {{ adminLoading ? '校验中...' : '管理界面' }}
+            {{ adminLoading ? '登录中...' : '管理界面' }}
           </button>
         </div>
       </nav>
@@ -51,6 +51,7 @@
           @keyup.enter="submitAdminAccess"
         />
       </label>
+      <p v-if="adminNotice" class="mt-2 text-xs text-amber-600">{{ adminNotice }}</p>
       <p v-if="adminError" class="mt-2 text-xs text-rose-600">{{ adminError }}</p>
       <div class="mt-5 flex items-center justify-end gap-3">
         <button
@@ -74,7 +75,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -82,26 +83,17 @@ const showAdminModal = ref(false);
 const adminPassword = ref('');
 const adminError = ref('');
 const adminLoading = ref(false);
+const adminNotice = ref('');
 
-const openAdminModal = async () => {
+const hasAdminSession = () => sessionStorage.getItem('admin_logged_in') === '1';
+
+const openAdminModal = (force = false) => {
   adminPassword.value = '';
   adminError.value = '';
-  adminLoading.value = true;
-  try {
-    const response = await fetch('/api/admin/ping', {
-      method: 'POST',
-      credentials: 'include',
-    });
-    const data = await response.json();
-    if (response.ok && data?.admin) {
-      showAdminModal.value = false;
-      router.push('/admin');
-      return;
-    }
-  } catch (err) {
-    // ignore and fall back to password modal
-  } finally {
-    adminLoading.value = false;
+  adminNotice.value = '';
+  if (!force && hasAdminSession()) {
+    router.push('/admin/records');
+    return;
   }
   showAdminModal.value = true;
 };
@@ -128,12 +120,27 @@ const submitAdminAccess = async () => {
     if (!response.ok) {
       throw new Error(data?.detail || '登录失败');
     }
+    sessionStorage.setItem('admin_logged_in', '1');
     showAdminModal.value = false;
-    router.push('/admin');
+    router.push('/admin/records');
   } catch (err) {
     adminError.value = err.message || '登录失败';
   } finally {
     adminLoading.value = false;
   }
 };
+
+const handleAdminAuthRequired = () => {
+  sessionStorage.removeItem('admin_logged_in');
+  adminNotice.value = '会话已过期 请重新输入密码';
+  openAdminModal(true);
+};
+
+onMounted(() => {
+  window.addEventListener('admin:auth-required', handleAdminAuthRequired);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('admin:auth-required', handleAdminAuthRequired);
+});
 </script>

@@ -1,14 +1,28 @@
 <template>
   <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-lg shadow-slate-200/40 backdrop-blur">
-    <div class="flex flex-wrap items-start justify-between gap-4">
+    <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">管理界面</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">管理员会话与接口状态</h1>
+        <h1 class="mt-2 text-2xl font-semibold text-slate-900">录音记录管理</h1>
         <p class="mt-2 text-sm text-slate-600">
           登录成功后可查看录音记录（/admin/all-record）。
         </p>
       </div>
-      <div class="flex gap-3">
+      <div class="flex flex-wrap items-center gap-3">
+        <nav class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+          <router-link
+            to="/admin"
+            class="rounded-full border border-slate-200 bg-white px-3 py-2 text-slate-600 hover:bg-slate-100"
+          >
+            录音记录
+          </router-link>
+          <router-link
+            to="/admin/texts"
+            class="rounded-full border border-slate-200 bg-white px-3 py-2 text-slate-600 hover:bg-slate-100"
+          >
+            朗读文本
+          </router-link>
+        </nav>
         <button
           type="button"
           class="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-60"
@@ -336,23 +350,8 @@ const detailDetails = ref(null);
 const activeWordIndex = ref(null);
 const audioRefs = new Map();
 
-const pingAdminSession = async () => {
-  adminLoading.value = true;
-  try {
-    const response = await fetch('/api/admin/ping', {
-      method: 'POST',
-      credentials: 'include',
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data?.detail || '会话无效');
-    }
-    return Boolean(data?.admin);
-  } catch (err) {
-    return false;
-  } finally {
-    adminLoading.value = false;
-  }
+const notifyAuthRequired = () => {
+  window.dispatchEvent(new Event('admin:auth-required'));
 };
 
 const fetchAdminRecords = async (targetPage = page.value) => {
@@ -362,6 +361,10 @@ const fetchAdminRecords = async (targetPage = page.value) => {
       method: 'GET',
       credentials: 'include',
     });
+    if (response.status === 401) {
+      notifyAuthRequired();
+      return;
+    }
     const data = await response.json();
     if (!response.ok) {
       throw new Error(data?.detail || '获取记录失败');
@@ -380,10 +383,7 @@ const fetchAdminRecords = async (targetPage = page.value) => {
 };
 
 const refreshAdmin = async () => {
-  const ok = await pingAdminSession();
-  if (ok) {
-    await fetchAdminRecords(1);
-  }
+  await fetchAdminRecords(1);
 };
 
 const formatDate = (value) => {
@@ -433,6 +433,7 @@ const closeDetail = () => {
   activeWordIndex.value = null;
 };
 
+
 const fetchDetailScore = async (record) => {
   detailLoading.value = true;
   detailError.value = '';
@@ -447,6 +448,10 @@ const fetchDetailScore = async (record) => {
       method: 'GET',
       credentials: 'include',
     });
+    if (response.status === 401) {
+      notifyAuthRequired();
+      return;
+    }
     const data = await response.json();
     if (!response.ok) {
       throw new Error(data?.detail || '获取评分详情失败');

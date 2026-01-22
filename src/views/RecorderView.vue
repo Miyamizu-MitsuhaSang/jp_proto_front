@@ -497,6 +497,31 @@ const submitAnalyze = async () => {
 
     resultScore.value = data?.result_score ?? null;
     activeWordIndex.value = null;
+
+    const recordId = data?.record_id;
+    if (recordId) {
+      try {
+        const uploadResponse = await fetch('/api/test/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            record_id: recordId,
+            name: name.value,
+            gender: gender.value,
+            school_level: schoolLevel.value,
+            grade: grade.value,
+            learning_age: Number(learningAge.value),
+          }),
+        });
+        const uploadData = await uploadResponse.json();
+        if (!uploadResponse.ok) {
+          throw new Error(uploadData?.detail || '信息同步失败');
+        }
+      } catch (uploadErr) {
+        error.value = uploadErr.message || '信息同步失败';
+      }
+    }
+
     await nextTick();
     if (scoreSection.value) {
       scoreSection.value.scrollIntoView({ behavior: 'smooth', block: 'start' });
