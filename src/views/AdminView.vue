@@ -383,7 +383,7 @@ const fetchAdminRecords = async (targetPage = page.value) => {
 };
 
 const refreshAdmin = async () => {
-  await fetchAdminRecords(1);
+  await fetchAdminRecords(page.value);
 };
 
 const formatDate = (value) => {

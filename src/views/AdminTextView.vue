@@ -25,7 +25,7 @@
           type="button"
           class="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-60"
           :disabled="textLoading"
-          @click="fetchAdminTexts(1)"
+          @click="fetchAdminTexts(textPage)"
         >
           {{ textLoading ? '刷新中...' : '刷新列表' }}
         </button>
@@ -121,7 +121,7 @@
                   type="button"
                   class="rounded-full border border-rose-200 px-2 sm:px-3 py-1 text-[10px] sm:text-[11px] font-semibold text-rose-600 hover:bg-rose-50"
                   :disabled="textLoading"
-                  @click="deleteText(item)"
+                  @click="openDeleteModal(item)"
                 >
                   删除
                 </button>
@@ -163,13 +163,47 @@
         <button
           type="button"
           class="rounded-full border border-slate-200 px-3 py-1 disabled:opacity-50"
-          :disabled="!textHasNext || textLoading"
+          :disabled="textPage >= totalTextPages || textLoading"
           @click="fetchAdminTexts(totalTextPages)"
         >
           末页
         </button>
       </div>
     </div>
+
+    <teleport to="body">
+      <div
+        v-if="showDeleteModal"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="closeDeleteModal"
+      >
+        <div class="max-h-[80vh] w-[min(92vw,560px)] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-base font-semibold text-slate-900">删除确认</p>
+              <p class="mt-3 text-sm text-slate-600">确定删除该朗读文本吗</p>
+            </div>
+          </div>
+          <div class="mt-6 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+              @click="closeDeleteModal"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              class="rounded-full bg-rose-600 px-5 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+              :disabled="textLoading"
+              @click="confirmDeleteText"
+            >
+              删除
+            </button>
+          </div>
+        </div>
+      </div>
+    </teleport>
   </section>
 </template>
 
@@ -188,6 +222,8 @@ const editingTextId = ref(null);
 const editingTextValue = ref('');
 const newTextArea = ref(null);
 const editTextArea = ref(null);
+const showDeleteModal = ref(false);
+const pendingDeleteItem = ref(null);
 const totalTextPages = computed(() => Math.max(1, Math.ceil(textTotal.value / textPageSize.value)));
 
 const notifyAuthRequired = () => {
@@ -248,7 +284,7 @@ const addText = async () => {
     if (newTextArea.value) {
       newTextArea.value.style.height = '';
     }
-    await fetchAdminTexts(1);
+    await fetchAdminTexts(textPage.value);
   } catch (err) {
     textStatus.value = err.message || '新增失败';
   } finally {
@@ -303,19 +339,32 @@ const saveEditText = async (item) => {
   }
 };
 
-const deleteText = async (item) => {
-  if (!window.confirm('确定删除该朗读文本吗')) return;
+const openDeleteModal = (item) => {
+  pendingDeleteItem.value = item;
+  showDeleteModal.value = true;
+};
+
+const closeDeleteModal = () => {
+  showDeleteModal.value = false;
+  pendingDeleteItem.value = null;
+};
+
+const confirmDeleteText = async () => {
+  const item = pendingDeleteItem.value;
+  if (!item) return;
   textLoading.value = true;
   textStatus.value = '';
   try {
+    const payload = { text_id: item.text_id, text: item.text };
     const response = await fetch('/api/admin/delete-text', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ text_id: item.text_id }),
+      body: JSON.stringify(payload),
     });
     if (response.status === 401) {
       notifyAuthRequired();
+      closeDeleteModal();
       return;
     }
     const data = await response.json();
@@ -323,6 +372,7 @@ const deleteText = async (item) => {
       throw new Error(data?.detail || '删除失败');
     }
     textStatus.value = '删除成功';
+    closeDeleteModal();
     await fetchAdminTexts(textPage.value);
   } catch (err) {
     textStatus.value = err.message || '删除失败';
@@ -338,6 +388,10 @@ onMounted(() => {
 const autoResizeNewText = () => {
   const el = newTextArea.value;
   if (!el) return;
+  if (!newText.value) {
+    el.style.height = '';
+    return;
+  }
   el.style.height = 'auto';
   const minHeight = parseFloat(getComputedStyle(el).lineHeight || '20') + 16;
   el.style.height = `${Math.max(el.scrollHeight, minHeight)}px`;
