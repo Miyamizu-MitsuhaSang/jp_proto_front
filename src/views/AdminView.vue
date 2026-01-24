@@ -4,9 +4,6 @@
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">管理界面</p>
         <h1 class="mt-2 text-2xl font-semibold text-slate-900">录音记录管理</h1>
-        <p class="mt-2 text-sm text-slate-600">
-          登录成功后可查看录音记录（/admin/all-record）。
-        </p>
       </div>
       <div class="flex flex-wrap items-center gap-3">
         <nav class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -53,20 +50,12 @@
         </div>
       </div>
 
-      <div class="mt-4 overflow-x-auto md:overflow-hidden rounded-2xl border border-slate-200">
-        <table class="w-full table-fixed text-[11px] sm:text-xs text-slate-600">
-          <colgroup>
-            <col class="w-[8%]" />
-            <col class="w-[8%]" />
-            <col class="w-[6%]" />
-            <col class="w-[8%]" />
-            <col class="w-[7%]" />
-            <col class="w-[7%]" />
-            <col class="w-[16%]" />
-            <col class="w-[12%]" />
-            <col class="w-[7%]" />
-            <col class="w-[14%]" />
-          </colgroup>
+      <div
+        ref="recordTableScroll"
+        class="mt-4 overflow-x-auto rounded-2xl border border-slate-200 overscroll-x-contain [touch-action:pan-y]"
+        @wheel="handleWheel"
+      >
+        <table class="w-full min-w-[980px] table-auto text-[11px] sm:text-xs text-slate-600">
           <thead class="bg-slate-100 text-[12px] uppercase tracking-[0.2em] text-slate-500">
             <tr>
               <th class="px-2 sm:px-3 py-4 whitespace-nowrap text-center">记录ID</th>
@@ -74,7 +63,7 @@
               <th class="px-2 sm:px-3 py-4 whitespace-nowrap text-center">性别</th>
               <th class="px-2 sm:px-3 py-4 whitespace-nowrap text-center">学校</th>
               <th class="px-2 sm:px-3 py-4 whitespace-nowrap text-center">年级</th>
-              <th class="px-2 sm:px-3 py-4 whitespace-nowrap text-center">学习年限</th>
+              <th class="px-2 sm:px-3 py-4 whitespace-nowrap text-center">学习时长</th>
               <th class="px-2 sm:px-3 py-4 whitespace-nowrap text-center">朗读文本</th>
               <th class="px-2 sm:px-3 py-4 whitespace-nowrap text-center">时间</th>
               <th class="px-2 sm:px-3 py-4 whitespace-nowrap text-center">Overall</th>
@@ -108,7 +97,11 @@
                 </div>
               </td>
               <td class="px-2 sm:px-3 py-4 whitespace-nowrap text-center text-[11px] sm:text-sm">{{ formatDate(record.created_at) }}</td>
-              <td class="px-2 sm:px-3 py-4 whitespace-nowrap text-center text-[11px] sm:text-sm">{{ formatScore(record.test__overall) }}</td>
+              <td class="px-2 sm:px-3 py-4 whitespace-nowrap text-center text-[11px] sm:text-sm">
+                <span :class="scoreTextClass(record.test__overall)">
+                  {{ formatScore(record.test__overall) }}
+                </span>
+              </td>
               <td class="px-2 sm:px-3 py-4 whitespace-nowrap text-center">
                 <div class="flex flex-nowrap items-center justify-center gap-2">
                   <button
@@ -132,6 +125,14 @@
                   >
                     下载
                   </a>
+                  <button
+                    type="button"
+                    class="rounded-full border border-rose-200 px-2 sm:px-3 py-1 text-[10px] sm:text-[11px] font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60"
+                    :disabled="recordsLoading"
+                    @click="openDeleteRecord(record)"
+                  >
+                    删除
+                  </button>
                 </div>
                 <div v-if="activeAudioId === record.record_id" class="mt-2">
                   <audio
@@ -170,8 +171,46 @@
           </button>
         </div>
       </div>
+
+      <div v-if="recordError" class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+        {{ recordError }}
+      </div>
     </div>
   </section>
+
+  <teleport to="body">
+    <div
+      v-if="showDeleteModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4"
+      @click.self="closeDeleteModal"
+    >
+      <div class="max-h-[80vh] w-[min(92vw,560px)] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-base font-semibold text-slate-900">删除确认</p>
+            <p class="mt-3 text-sm text-slate-600">确定删除该录音记录吗</p>
+          </div>
+        </div>
+        <div class="mt-6 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+            @click="closeDeleteModal"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            class="rounded-full bg-rose-600 px-5 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+            :disabled="recordsLoading"
+            @click="confirmDeleteRecord"
+          >
+            删除
+          </button>
+        </div>
+      </div>
+    </div>
+  </teleport>
 
   <div v-if="showDetail" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-6">
     <div class="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
@@ -339,6 +378,8 @@ const page = ref(1);
 const pageSize = ref(10);
 const total = ref(0);
 const hasNext = ref(false);
+const recordError = ref('');
+const recordTableScroll = ref(null);
 const activeAudioId = ref('');
 const showDetail = ref(false);
 const activeRecord = ref(null);
@@ -349,6 +390,8 @@ const detailWords = ref([]);
 const detailDetails = ref(null);
 const activeWordIndex = ref(null);
 const audioRefs = new Map();
+const showDeleteModal = ref(false);
+const pendingDeleteRecord = ref(null);
 
 const notifyAuthRequired = () => {
   window.dispatchEvent(new Event('admin:auth-required'));
@@ -356,6 +399,7 @@ const notifyAuthRequired = () => {
 
 const fetchAdminRecords = async (targetPage = page.value) => {
   recordsLoading.value = true;
+  recordError.value = '';
   try {
     const response = await fetch(`/api/admin/all-record?page=${targetPage}&page_size=${pageSize.value}`, {
       method: 'GET',
@@ -377,6 +421,7 @@ const fetchAdminRecords = async (targetPage = page.value) => {
     records.value = [];
     total.value = 0;
     hasNext.value = false;
+    recordError.value = err.message || '获取记录失败';
   } finally {
     recordsLoading.value = false;
   }
@@ -417,10 +462,34 @@ const setAudioRef = (recordId, el) => {
   }
 };
 
+const handleWheel = (event) => {
+  const container = recordTableScroll.value;
+  if (!container) return;
+  if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+  const maxScrollLeft = container.scrollWidth - container.clientWidth;
+  if (maxScrollLeft <= 0) return;
+  const atStart = container.scrollLeft <= 0;
+  const atEnd = container.scrollLeft >= maxScrollLeft - 1;
+  if ((event.deltaX < 0 && atStart) || (event.deltaX > 0 && atEnd)) {
+    event.preventDefault();
+  }
+};
+
 const openDetail = (record) => {
   activeRecord.value = record;
   showDetail.value = true;
   fetchDetailScore(record);
+};
+
+const openDeleteRecord = (record) => {
+  pendingDeleteRecord.value = record;
+  showDeleteModal.value = true;
+  recordError.value = '';
+};
+
+const closeDeleteModal = () => {
+  showDeleteModal.value = false;
+  pendingDeleteRecord.value = null;
 };
 
 const closeDetail = () => {
@@ -431,6 +500,40 @@ const closeDetail = () => {
   detailDetails.value = null;
   detailError.value = '';
   activeWordIndex.value = null;
+};
+
+const confirmDeleteRecord = async () => {
+  const record = pendingDeleteRecord.value;
+  if (!record) return;
+  if (!record.test_id) {
+    recordError.value = '缺少 test_id，无法删除记录。';
+    closeDeleteModal();
+    return;
+  }
+  recordsLoading.value = true;
+  recordError.value = '';
+  try {
+    const response = await fetch(`/api/admin/record/${encodeURIComponent(record.test_id)}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    if (response.status === 401) {
+      notifyAuthRequired();
+      closeDeleteModal();
+      return;
+    }
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.detail || '删除失败');
+    }
+    closeDeleteModal();
+    const nextPage = records.value.length <= 1 && page.value > 1 ? page.value - 1 : page.value;
+    await fetchAdminRecords(nextPage);
+  } catch (err) {
+    recordError.value = err.message || '删除失败';
+  } finally {
+    recordsLoading.value = false;
+  }
 };
 
 

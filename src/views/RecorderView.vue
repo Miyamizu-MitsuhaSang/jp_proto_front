@@ -1,5 +1,5 @@
 <template>
-  <section class="flex flex-col gap-10">
+  <section class="flex select-none flex-col gap-10">
     <header class="space-y-3">
       <p class="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">
         发音评测上传
@@ -22,12 +22,12 @@
                 v-model.trim="name"
                 type="text"
                 placeholder="请输入姓名"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm select-text"
               />
             </label>
             <label class="space-y-2 text-sm">
               <span class="font-medium text-slate-700">性别</span>
-              <select v-model="gender" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+              <select v-model="gender" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm select-text">
                 <option value="" disabled>请选择性别</option>
                 <option v-for="option in genderOptions" :key="option.value" :value="option.value">
                   {{ option.label }}
@@ -36,7 +36,7 @@
             </label>
             <label class="space-y-2 text-sm">
               <span class="font-medium text-slate-700">学校</span>
-              <select v-model="schoolLevel" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+              <select v-model="schoolLevel" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm select-text">
                 <option value="" disabled>请选择学校</option>
                 <option v-for="option in schoolLevels" :key="option" :value="option">
                   {{ option }}
@@ -45,19 +45,42 @@
             </label>
             <label class="space-y-2 text-sm">
               <span class="font-medium text-slate-700">学习时长</span>
-              <input
-                v-model.number="learningAge"
-                type="number"
-                min="0"
-                max="50"
-                step="1"
-                placeholder="例如 1（必选）"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400"
-              />
+              <div class="relative">
+                <input
+                  v-model.number="learningAge"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  min="0"
+                  max="50"
+                  step="1"
+                  placeholder="例如 1（必选）"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pr-11 text-sm placeholder:text-slate-400 [appearance:textfield] select-text"
+                />
+                <div class="absolute inset-y-1 right-1 flex flex-col gap-1">
+                  <button
+                    type="button"
+                    class="flex h-1/2 items-center justify-center rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:-translate-y-[1px] hover:bg-slate-50 hover:shadow"
+                    aria-label="学习时长加一"
+                    @click="incrementLearningAge"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    class="flex h-1/2 items-center justify-center rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:translate-y-[1px] hover:bg-slate-50 hover:shadow"
+                    aria-label="学习时长减一"
+                    @click="decrementLearningAge"
+                    :disabled="Number(learningAge || 0) <= 0"
+                  >
+                    ▼
+                  </button>
+                </div>
+              </div>
             </label>
             <label class="space-y-2 text-sm sm:col-span-2">
               <span class="font-medium text-slate-700">年级</span>
-              <select v-model="grade" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+              <select v-model="grade" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm select-text">
                 <option value="" disabled>请选择年级</option>
                 <option v-for="option in availableGrades" :key="option" :value="option">
                   {{ option }}
@@ -68,7 +91,7 @@
 
           <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
             <div class="flex items-center justify-between gap-4">
-              <span class="font-medium text-slate-700">参考文本</span>
+              <span class="font-medium text-slate-700">朗读文本</span>
               <button
                 type="button"
                 class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-60"
@@ -78,9 +101,19 @@
                 {{ sentenceLoading ? '获取中...' : '换一句' }}
               </button>
             </div>
-            <p class="mt-3 min-h-[3rem] text-base text-slate-900">
+            <p class="mt-3 min-h-[3rem] text-base text-slate-900 select-text">
               {{ refText || '正在获取参考文本...' }}
             </p>
+            <div class="mt-3 flex items-center justify-end">
+              <button
+                type="button"
+                class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-60"
+                :disabled="!refText"
+                @click="copyRefText"
+              >
+                复制文本
+              </button>
+            </div>
           </div>
 
           <div class="grid gap-4 sm:grid-cols-2">
@@ -96,7 +129,7 @@
             <div class="mt-4 flex flex-wrap gap-3">
               <button
                 class="rounded-full bg-emerald-400/90 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="!canRecord || isRecording"
+                :disabled="isRecording"
                 @click="startRecording"
               >
                 开始录音
@@ -119,6 +152,12 @@
               <p class="mt-4 text-xs text-slate-300">
                 录音会尽量使用 mp3 若浏览器不支持则自动改用可用格式
               </p>
+              <p v-if="!isSecureContext" class="mt-2 text-xs text-amber-300">
+                当前为非 HTTPS 环境，浏览器将禁止录音
+              </p>
+              <p v-else-if="!canRecord" class="mt-2 text-xs text-amber-300">
+                当前浏览器不支持录音功能
+              </p>
             </div>
 
           <div class="rounded-2xl border border-slate-200 bg-white p-5">
@@ -138,6 +177,14 @@
               </button>
             </div>
           </div>
+
+          <button
+            class="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="isSubmitting"
+            @click="resetUserInfo"
+          >
+            重置信息
+          </button>
 
           <button
             class="w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
@@ -281,6 +328,23 @@
         </div>
       </div>
     </section>
+
+    <transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="translate-y-2 opacity-0"
+      enter-to-class="translate-y-0 opacity-100"
+      leave-active-class="transition duration-150 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="toastMessage"
+        class="fixed top-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-emerald-200/70 bg-white/90 px-4 py-2 text-xs font-semibold text-emerald-700 shadow-lg shadow-emerald-200/40 backdrop-blur"
+      >
+        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] text-white">✓</span>
+        {{ toastMessage }}
+      </div>
+    </transition>
   </section>
 </template>
 
@@ -304,6 +368,8 @@ const isRecording = ref(false);
 const isSubmitting = ref(false);
 const status = ref('');
 const error = ref('');
+const toastMessage = ref('');
+const toastTimer = ref(null);
 const apiResponse = ref('');
 const resultScore = ref(null);
 const sentenceLoading = ref(false);
@@ -318,6 +384,7 @@ let mediaRecorder = null;
 let mediaStream = null;
 let recordedChunks = [];
 
+const isSecureContext = computed(() => Boolean(window.isSecureContext));
 const canRecord = computed(() => Boolean(navigator.mediaDevices?.getUserMedia));
 const resultWords = computed(() => {
   if (!resultScore.value) return [];
@@ -369,12 +436,30 @@ const resetRecording = () => {
   audioUrl.value = '';
 };
 
+const clampLearningAge = (value) => Math.min(50, Math.max(0, value));
+
+const incrementLearningAge = () => {
+  const current = Number.isFinite(Number(learningAge.value)) ? Number(learningAge.value) : 0;
+  learningAge.value = clampLearningAge(current + 1);
+};
+
+const decrementLearningAge = () => {
+  const current = Number.isFinite(Number(learningAge.value)) ? Number(learningAge.value) : 0;
+  learningAge.value = clampLearningAge(current - 1);
+};
+
 const startRecording = async () => {
   error.value = '';
   status.value = '';
   apiResponse.value = '';
 
   try {
+    if (!isSecureContext.value) {
+      throw new Error('当前为非 HTTPS 环境，浏览器会阻止麦克风权限');
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('当前浏览器不支持录音功能');
+    }
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaStream = stream;
     recordedChunks = [];
@@ -404,7 +489,7 @@ const startRecording = async () => {
     status.value = '录音中...';
   } catch (err) {
     cleanupStream();
-    error.value = '无法访问麦克风，请检查浏览器权限';
+    error.value = err?.message || '无法访问麦克风，请检查浏览器权限';
   }
 };
 
@@ -423,6 +508,7 @@ const saveRecording = () => {
   link.click();
   document.body.removeChild(link);
 };
+
 
 const extensionFromMime = (mimeType) => {
   if (mimeType === 'audio/mpeg') return 'mp3';
@@ -601,12 +687,44 @@ const startNewTest = () => {
   error.value = '';
   status.value = '';
   resetRecording();
+  fetchRandomSentence();
+};
+
+const resetUserInfo = () => {
   name.value = '';
   gender.value = '';
   schoolLevel.value = '';
   grade.value = '';
   learningAge.value = '';
-  fetchRandomSentence();
+};
+
+const copyRefText = async () => {
+  if (!refText.value) return;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(refText.value);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = refText.value;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    toastMessage.value = '复制成功';
+    if (toastTimer.value) {
+      clearTimeout(toastTimer.value);
+    }
+    toastTimer.value = setTimeout(() => {
+      toastMessage.value = '';
+      toastTimer.value = null;
+    }, 2000);
+  } catch (err) {
+    error.value = '复制失败，请手动选择文本';
+  }
 };
 
 </script>
