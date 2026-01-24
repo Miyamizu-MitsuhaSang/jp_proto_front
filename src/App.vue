@@ -32,7 +32,7 @@
         <p>
           制作者：
           <a
-            href="https://github.com/Miyamizu-MitsuhaSang/jp_proto"
+            href="https://github.com/Miyamizu-MitsuhaSang/jp_proto_front"
             target="_blank"
             rel="noreferrer"
             class="font-semibold text-slate-700 hover:text-slate-900"

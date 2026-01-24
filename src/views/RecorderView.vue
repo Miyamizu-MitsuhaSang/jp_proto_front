@@ -57,10 +57,10 @@
                   placeholder="例如 1（必选）"
                   class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pr-11 text-sm placeholder:text-slate-400 [appearance:textfield] select-text"
                 />
-                <div class="absolute inset-y-1 right-1 flex flex-col gap-1">
+                <div class="absolute inset-y-1 right-1 flex flex-col gap-[2px]">
                   <button
                     type="button"
-                    class="flex h-1/2 items-center justify-center rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:-translate-y-[1px] hover:bg-slate-50 hover:shadow"
+                    class="flex h-1/2 items-center justify-center rounded-md bg-transparent px-1 text-[9px] font-semibold text-slate-500 transition hover:-translate-y-[1px] hover:text-slate-700"
                     aria-label="学习时长加一"
                     @click="incrementLearningAge"
                   >
@@ -68,7 +68,7 @@
                   </button>
                   <button
                     type="button"
-                    class="flex h-1/2 items-center justify-center rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:translate-y-[1px] hover:bg-slate-50 hover:shadow"
+                    class="flex h-1/2 items-center justify-center rounded-md bg-transparent px-1 text-[9px] font-semibold text-slate-500 transition hover:translate-y-[1px] hover:text-slate-700"
                     aria-label="学习时长减一"
                     @click="decrementLearningAge"
                     :disabled="Number(learningAge || 0) <= 0"
